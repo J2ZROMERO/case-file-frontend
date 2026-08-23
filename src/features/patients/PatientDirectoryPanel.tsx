@@ -1,0 +1,178 @@
+import { useMemo, useState } from "react";
+import { Pencil, Plus, RefreshCw, Search } from "lucide-react";
+
+import { Button, Card, EmptyState, FormField, Modal } from "../../components/ui";
+import { useAppForm } from "../../hooks";
+import type { Patient } from "../../types";
+
+type PatientDirectoryPanelProps = {
+  patients: Patient[];
+  onCreate: (payload: Record<string, unknown>) => Promise<void>;
+  onRefresh: () => Promise<void>;
+  onUpdate: (patientId: string, payload: Record<string, unknown>) => Promise<void>;
+};
+
+type PatientForm = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  birth_date: string;
+  curp: string;
+};
+
+export function PatientPanel({ patients, onCreate, onRefresh, onUpdate }: PatientDirectoryPanelProps) {
+  const [search, setSearch] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const form = useAppForm<PatientForm>({
+    defaultValues: { first_name: "", last_name: "", email: "", birth_date: "", curp: "" },
+  });
+
+  const filteredPatients = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase("es-MX");
+    if (!term) return patients;
+    return patients.filter((patient) =>
+      [patient.first_name, patient.last_name, patient.email, patient.curp ?? ""]
+        .join(" ")
+        .toLocaleLowerCase("es-MX")
+        .includes(term),
+    );
+  }, [patients, search]);
+
+  const openEditModal = (patient: Patient) => {
+    form.reset({
+      first_name: patient.first_name,
+      last_name: patient.last_name,
+      email: patient.email,
+      birth_date: patient.birth_date ?? "",
+      curp: patient.curp ?? "",
+    });
+    setEditingPatient(patient);
+  };
+
+  const openCreateModal = () => {
+    form.reset({ first_name: "", last_name: "", email: "", birth_date: "", curp: "" });
+    setEditingPatient(null);
+    setIsCreateOpen(true);
+  };
+
+  const closeModal = () => {
+    setEditingPatient(null);
+    setIsCreateOpen(false);
+  };
+
+  return (
+    <Card>
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="section-title">Pacientes</h2>
+          <p className="text-sm text-muted">Consulta y corrige los datos de tus pacientes.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" icon={<RefreshCw className="h-4 w-4" />} onClick={onRefresh}>
+            Actualizar
+          </Button>
+          <Button type="button" icon={<Plus className="h-4 w-4" />} onClick={openCreateModal}>
+            Agregar paciente
+          </Button>
+        </div>
+      </div>
+
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <label className="relative block w-full sm:max-w-md">
+          <span className="sr-only">Buscar pacientes</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nombre, email o CURP"
+            className="field-control pl-9"
+          />
+        </label>
+        <span className="text-sm text-muted">{filteredPatients.length} de {patients.length} pacientes</span>
+      </div>
+
+      {patients.length === 0 ? (
+        <EmptyState title="Sin pacientes" description="Todavia no hay pacientes registrados en esta clinica." />
+      ) : filteredPatients.length === 0 ? (
+        <EmptyState title="Sin resultados" description="No hay pacientes que coincidan con la busqueda." />
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-slate-200">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Paciente</th>
+                  <th className="px-4 py-3 font-semibold">Email</th>
+                  <th className="px-4 py-3 font-semibold">Fecha de nacimiento</th>
+                  <th className="px-4 py-3 font-semibold">CURP</th>
+                  <th className="px-4 py-3 text-right font-semibold">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {filteredPatients.map((patient) => (
+                  <tr key={patient.id} className="hover:bg-slate-50">
+                    <td className="whitespace-nowrap px-4 py-3 font-semibold text-ink">{patient.first_name} {patient.last_name}</td>
+                    <td className="px-4 py-3 text-muted">{patient.email}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted">{patient.birth_date || "No registrada"}</td>
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted">{patient.curp || "No registrada"}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Button type="button" variant="secondary" icon={<Pencil className="h-4 w-4" />} onClick={() => openEditModal(patient)}>
+                        Editar
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <Modal
+        isOpen={isCreateOpen || Boolean(editingPatient)}
+        onClose={closeModal}
+        title={editingPatient ? "Editar paciente" : "Agregar paciente"}
+        description={editingPatient ? "Corrige los datos necesarios y guarda los cambios." : "Captura los datos del nuevo paciente."}
+      >
+        <form
+          className="grid gap-3 md:grid-cols-2"
+          onSubmit={form.submit(async (values) => {
+            try {
+              const payload = {
+                ...values,
+                birth_date: values.birth_date || null,
+                curp: values.curp || null,
+              };
+              if (editingPatient) await onUpdate(editingPatient.id, payload);
+              else await onCreate(payload);
+              closeModal();
+            } catch (error) {
+              form.applyServerError(error, "email");
+            }
+          })}
+        >
+          <FormField label="Nombre" registration={form.register("first_name", { required: "Nombre obligatorio." })} error={form.formState.errors.first_name} />
+          <FormField label="Apellidos" registration={form.register("last_name", { required: "Apellidos obligatorios." })} error={form.formState.errors.last_name} />
+          <FormField label="Email" type="email" registration={form.register("email", { required: "Email obligatorio." })} error={form.formState.errors.email} />
+          <FormField label="Fecha de nacimiento" type="date" registration={form.register("birth_date")} error={form.formState.errors.birth_date} />
+          <div className="md:col-span-2">
+            <FormField
+              label="CURP"
+              registration={form.register("curp", {
+                minLength: { value: 18, message: "CURP debe tener 18 caracteres." },
+                maxLength: { value: 18, message: "CURP debe tener 18 caracteres." },
+              })}
+              error={form.formState.errors.curp}
+            />
+          </div>
+          <div className="flex justify-end gap-2 md:col-span-2">
+            <Button type="button" variant="ghost" onClick={closeModal}>Cancelar</Button>
+            <Button type="submit">{editingPatient ? "Guardar cambios" : "Guardar paciente"}</Button>
+          </div>
+        </form>
+      </Modal>
+    </Card>
+  );
+}
