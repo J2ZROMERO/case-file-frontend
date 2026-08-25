@@ -29,7 +29,7 @@ export function Modal({ isOpen, title, description, children, onClose }: ModalPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 sm:items-center sm:p-4"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
@@ -39,7 +39,7 @@ export function Modal({ isOpen, title, description, children, onClose }: ModalPr
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-xl"
+        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
       >
         <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4">
           <div>
@@ -55,9 +55,8 @@ export function Modal({ isOpen, title, description, children, onClose }: ModalPr
             <X className="h-5 w-5" />
           </button>
         </header>
-        <div className="p-5">{children}</div>
+        <div className="p-4 sm:p-5">{children}</div>
       </section>
     </div>
   );
 }
-

@@ -1,153 +1,105 @@
-import { KeyRound, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { Building2, KeyRound } from "lucide-react";
 
-import { Button, Card, FormField, Tabs } from "../../components/ui";
+import { Button, Card, FormField } from "../../components/ui";
 import { useAppForm } from "../../hooks";
 
-type AuthPanelProps = {
-  tenantId: string;
-  isAuthenticated: boolean;
-  onRegister: (payload: Record<string, unknown>) => Promise<void>;
-  onLogin: (payload: { tenant_id: string; email: string; password: string }) => Promise<void>;
-};
-
-type RegisterForm = {
-  email: string;
+export type ClinicAccess = { id: string; name: string; role: string };
+export type ClinicSelection = {
+  selection_token: string;
   full_name: string;
-  password: string;
-  confirm_password: string;
-  role: string;
-};
-
-type LoginForm = {
   email: string;
-  password: string;
+  clinics: ClinicAccess[];
 };
 
-export function AuthPanel({ tenantId, isAuthenticated, onRegister, onLogin }: AuthPanelProps) {
-  const [activeTab, setActiveTab] = useState("login");
-  const registerForm = useAppForm<RegisterForm>({
-    defaultValues: {
-      email: "admin@clinica.test",
-      full_name: "Admin Clinico",
-      password: "Password123",
-      confirm_password: "Password123",
-      role: "tenant_admin",
-    },
-  });
-  const loginForm = useAppForm<LoginForm>({
-    defaultValues: { email: "admin@clinica.test", password: "Password123" },
-  });
+type AuthPanelProps = {
+  selection: ClinicSelection | null;
+  onIdentify: (payload: { email: string; password: string }) => Promise<void>;
+  onSelectClinic: (clinic: ClinicAccess) => Promise<void>;
+  onBack: () => void;
+};
+
+type LoginForm = { email: string; password: string };
+
+const roleLabels: Record<string, string> = {
+  tenant_admin: "Administración",
+  doctor: "Médico",
+  nurse: "Enfermería",
+  reception: "Recepción",
+  auditor: "Consulta de actividad",
+};
+
+export function AuthPanel({ selection, onIdentify, onSelectClinic, onBack }: AuthPanelProps) {
+  const form = useAppForm<LoginForm>({ defaultValues: { email: "", password: "" } });
 
   return (
     <Card>
-      <div className="mb-4">
-        <h2 className="section-title">Usuarios y acceso</h2>
-        <p className="text-sm text-muted">Crea una persona autorizada o entra para empezar a trabajar.</p>
-      </div>
-
-      <Tabs
-        activeId={activeTab}
-        onChange={setActiveTab}
-        items={[
-          { id: "login", label: "Iniciar sesion" },
-          { id: "register", label: "Crear usuario" },
-        ]}
-      />
-
-      {activeTab === "register" ? (
-        <form
-          className="mt-4 grid gap-3"
-          onSubmit={registerForm.submit(async (values) => {
-            try {
-              const { confirm_password: _confirmPassword, ...payload } = values;
-              await onRegister({ ...payload, tenant_id: tenantId });
-              registerForm.reset({
-                email: "",
-                full_name: "",
-                password: "",
-                confirm_password: "",
-                role: values.role,
-              });
-            } catch (error) {
-              registerForm.applyServerError(error, "email");
-            }
-          })}
-        >
-          <FormField
-            label="Email"
-            type="email"
-            registration={registerForm.register("email", { required: "Email obligatorio." })}
-            error={registerForm.formState.errors.email}
-          />
-          <FormField
-            label="Nombre completo"
-            registration={registerForm.register("full_name", { required: "Nombre obligatorio." })}
-            error={registerForm.formState.errors.full_name}
-          />
-          <FormField
-            label="Password"
-            type="password"
-            registration={registerForm.register("password", {
-              required: "Password obligatorio.",
-              minLength: { value: 8, message: "Minimo 8 caracteres." },
-            })}
-            error={registerForm.formState.errors.password}
-          />
-          <FormField
-            label="Confirmar password"
-            type="password"
-            registration={registerForm.register("confirm_password", {
-              required: "Confirma el password.",
-              validate: (value) =>
-                value === registerForm.watch("password") || "Los passwords no coinciden.",
-            })}
-            error={registerForm.formState.errors.confirm_password}
-          />
-          <FormField label="Rol" as="select" registration={registerForm.register("role")}>
-            <option value="tenant_admin">Administrador</option>
-            <option value="doctor">Medico</option>
-            <option value="nurse">Enfermeria</option>
-            <option value="reception">Recepcion</option>
-            <option value="auditor">Auditor</option>
-          </FormField>
-          <Button type="submit" icon={<UserPlus className="h-4 w-4" />} disabled={!tenantId}>
-            Crear usuario
-          </Button>
-        </form>
-      ) : (
-        <form
-          className="mt-4 grid gap-3"
-          onSubmit={loginForm.submit(async (values) => {
-            try {
-              await onLogin({ ...values, tenant_id: tenantId });
-              loginForm.reset({ email: "", password: "" });
-            } catch (error) {
-              loginForm.applyServerError(error, "password");
-            }
-          })}
-        >
-          <FormField
-            label="Email"
-            type="email"
-            registration={loginForm.register("email", { required: "Email obligatorio." })}
-            error={loginForm.formState.errors.email}
-          />
-          <FormField
-            label="Password"
-            type="password"
-            registration={loginForm.register("password", { required: "Password obligatorio." })}
-            error={loginForm.formState.errors.password}
-          />
-          <Button type="submit" icon={<KeyRound className="h-4 w-4" />} disabled={!tenantId}>
-            Entrar
-          </Button>
-          {isAuthenticated ? (
-            <p className="rounded-md bg-brand-50 p-3 text-sm font-semibold text-brand-700">
-              Sesion activa. Ya puedes trabajar con pacientes y expedientes.
+      {!selection ? (
+        <>
+          <div className="mb-5">
+            <h2 className="section-title">Iniciar sesión</h2>
+            <p className="mt-1 text-sm text-muted">
+              Escribe tus datos. Después podrás elegir una de tus clínicas.
             </p>
-          ) : null}
-        </form>
+          </div>
+          <form
+            className="grid gap-4"
+            onSubmit={form.submit(async (values) => {
+              try {
+                await onIdentify(values);
+              } catch (error) {
+                form.applyServerError(error, "password");
+              }
+            })}
+          >
+            <FormField
+              label="Correo electrónico"
+              type="email"
+              autoComplete="email"
+              registration={form.register("email", { required: "Escribe tu correo." })}
+              error={form.formState.errors.email}
+            />
+            <FormField
+              label="Contraseña"
+              type="password"
+              autoComplete="current-password"
+              registration={form.register("password", { required: "Escribe tu contraseña." })}
+              error={form.formState.errors.password}
+            />
+            <Button type="submit" icon={<KeyRound className="h-4 w-4" />}>
+              Continuar
+            </Button>
+          </form>
+        </>
+      ) : (
+        <>
+          <div className="mb-5">
+            <h2 className="section-title">Elige dónde trabajarás</h2>
+            <p className="mt-1 text-sm text-muted">
+              Hola, {selection.full_name}. Sólo aparecen las clínicas asociadas a tu cuenta.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {selection.clinics.map((clinic) => (
+              <button
+                key={clinic.id}
+                type="button"
+                onClick={() => onSelectClinic(clinic)}
+                className="flex min-h-24 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-brand-500 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <span className="rounded-lg bg-brand-100 p-2 text-brand-700">
+                  <Building2 className="h-5 w-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-semibold text-ink">{clinic.name}</span>
+                  <span className="block text-sm text-muted">{roleLabels[clinic.role] ?? clinic.role}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <Button className="mt-4" type="button" variant="secondary" onClick={onBack}>
+            Usar otra cuenta
+          </Button>
+        </>
       )}
     </Card>
   );

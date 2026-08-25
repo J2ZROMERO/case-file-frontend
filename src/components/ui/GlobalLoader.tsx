@@ -8,15 +8,17 @@ export function GlobalLoader({ active }: GlobalLoaderProps) {
   if (!active) return null;
 
   return (
-    <div className="fixed inset-x-0 top-0 z-50 h-1 bg-brand-100">
-      <div className="h-full w-1/3 animate-pulse bg-brand-600" />
-      <div className="fixed right-4 top-4 rounded-md bg-white px-3 py-2 text-sm shadow-soft">
-        <span className="inline-flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin text-brand-600" />
-          Procesando
-        </span>
+    <div
+      className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/35 px-5 backdrop-blur-[2px]"
+      role="status"
+      aria-live="polite"
+      aria-label="Cargando información"
+    >
+      <div className="w-full max-w-xs rounded-2xl bg-white p-6 text-center shadow-xl">
+        <Loader2 className="mx-auto h-10 w-10 animate-spin text-brand-600" />
+        <p className="mt-4 text-base font-semibold text-ink">Estamos cargando tu información</p>
+        <p className="mt-1 text-sm text-muted">Espera un momento, por favor.</p>
       </div>
     </div>
   );
 }
-

@@ -6,6 +6,7 @@ type FormFieldProps = {
   error?: FieldError;
   type?: string;
   placeholder?: string;
+  autoComplete?: string;
   as?: "input" | "textarea" | "select";
   children?: React.ReactNode;
 };
@@ -16,6 +17,7 @@ export function FormField({
   error,
   type = "text",
   placeholder,
+  autoComplete,
   as = "input",
   children,
 }: FormFieldProps) {
@@ -29,10 +31,9 @@ export function FormField({
           {children}
         </select>
       ) : (
-        <input className="field-control" type={type} placeholder={placeholder} {...registration} />
+        <input className="field-control" type={type} placeholder={placeholder} autoComplete={autoComplete} {...registration} />
       )}
       {error ? <span className="field-error">{error.message}</span> : null}
     </label>
   );
 }
-

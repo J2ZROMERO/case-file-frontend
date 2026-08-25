@@ -15,8 +15,8 @@ export function AuditPanel({ events, tenantId, onRefresh }: AuditPanelProps) {
     <Card>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 className="section-title">Auditoria</h2>
-          <p className="text-sm text-muted">Bitacora de operaciones clinicas y lectura de paciente.</p>
+          <h2 className="section-title">Actividad reciente</h2>
+          <p className="text-sm text-muted">Consulta los cambios realizados en la clínica.</p>
         </div>
         <Button
           type="button"
@@ -25,13 +25,13 @@ export function AuditPanel({ events, tenantId, onRefresh }: AuditPanelProps) {
           onClick={onRefresh}
           disabled={!tenantId}
         >
-          Refrescar
+          Actualizar
         </Button>
       </div>
 
       <div className="grid gap-2">
         {events.length === 0 ? (
-          <EmptyState title="Sin eventos" description="Crea pacientes, expedientes o notas para generar auditoria." />
+          <EmptyState title="Sin actividad" description="Los cambios realizados aparecerán aquí." />
         ) : (
           events.map((event) => (
             <div key={event.id} className="rounded-md border border-slate-200 bg-white p-3 text-sm">
@@ -39,9 +39,7 @@ export function AuditPanel({ events, tenantId, onRefresh }: AuditPanelProps) {
                 <span className="font-semibold text-ink">{event.action}</span>
                 <span className="text-xs text-muted">{formatDateTime(event.occurred_at)}</span>
               </div>
-              <p className="mt-1 break-all text-muted">
-                {event.resource_type}: {event.resource_id}
-              </p>
+              <p className="mt-1 text-muted">Registro actualizado</p>
             </div>
           ))
         )}
@@ -49,4 +47,3 @@ export function AuditPanel({ events, tenantId, onRefresh }: AuditPanelProps) {
     </Card>
   );
 }
-

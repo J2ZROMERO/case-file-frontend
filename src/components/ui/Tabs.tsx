@@ -11,7 +11,7 @@ type TabsProps = {
 
 export function Tabs({ items, activeId, onChange }: TabsProps) {
   return (
-    <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+    <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
       {items.map((item) => (
         <button
           key={item.id}
@@ -29,4 +29,3 @@ export function Tabs({ items, activeId, onChange }: TabsProps) {
     </div>
   );
 }
-

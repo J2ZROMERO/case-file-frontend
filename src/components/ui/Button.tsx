@@ -10,7 +10,7 @@ export function Button({ children, className, icon, variant = "primary", ...prop
   return (
     <button
       className={clsx(
-        "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60",
         variant === "primary" && "bg-brand-600 text-white hover:bg-brand-700",
         variant === "secondary" && "border border-slate-300 bg-white text-ink hover:bg-slate-50",
         variant === "ghost" && "text-ink hover:bg-slate-100",
@@ -23,4 +23,3 @@ export function Button({ children, className, icon, variant = "primary", ...prop
     </button>
   );
 }
-

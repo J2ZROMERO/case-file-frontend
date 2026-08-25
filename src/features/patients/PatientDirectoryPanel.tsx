@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pencil, Plus, RefreshCw, Search } from "lucide-react";
+import { Link2, Pencil, Plus, RefreshCw, Search } from "lucide-react";
 
 import { Button, Card, EmptyState, FormField, Modal } from "../../components/ui";
 import { useAppForm } from "../../hooks";
@@ -10,6 +10,8 @@ type PatientDirectoryPanelProps = {
   onCreate: (payload: Record<string, unknown>) => Promise<void>;
   onRefresh: () => Promise<void>;
   onUpdate: (patientId: string, payload: Record<string, unknown>) => Promise<void>;
+  canInvite: boolean;
+  onInvite: (patientId: string) => Promise<string>;
 };
 
 type PatientForm = {
@@ -20,10 +22,11 @@ type PatientForm = {
   curp: string;
 };
 
-export function PatientPanel({ patients, onCreate, onRefresh, onUpdate }: PatientDirectoryPanelProps) {
+export function PatientPanel({ patients, onCreate, onRefresh, onUpdate, canInvite, onInvite }: PatientDirectoryPanelProps) {
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [invitationLink, setInvitationLink] = useState("");
   const form = useAppForm<PatientForm>({
     defaultValues: { first_name: "", last_name: "", email: "", birth_date: "", curp: "" },
   });
@@ -66,9 +69,9 @@ export function PatientPanel({ patients, onCreate, onRefresh, onUpdate }: Patien
       <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="section-title">Pacientes</h2>
-          <p className="text-sm text-muted">Consulta y corrige los datos de tus pacientes.</p>
+          <p className="text-sm text-muted">Busca, agrega o corrige los datos de tus pacientes.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           <Button type="button" variant="secondary" icon={<RefreshCw className="h-4 w-4" />} onClick={onRefresh}>
             Actualizar
           </Button>
@@ -98,9 +101,9 @@ export function PatientPanel({ patients, onCreate, onRefresh, onUpdate }: Patien
       ) : filteredPatients.length === 0 ? (
         <EmptyState title="Sin resultados" description="No hay pacientes que coincidan con la busqueda." />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-slate-200">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+        <div className="sm:overflow-hidden sm:rounded-lg sm:border sm:border-slate-200">
+          <div>
+            <table className="responsive-table min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Paciente</th>
@@ -113,14 +116,15 @@ export function PatientPanel({ patients, onCreate, onRefresh, onUpdate }: Patien
               <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredPatients.map((patient) => (
                   <tr key={patient.id} className="hover:bg-slate-50">
-                    <td className="whitespace-nowrap px-4 py-3 font-semibold text-ink">{patient.first_name} {patient.last_name}</td>
-                    <td className="px-4 py-3 text-muted">{patient.email}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted">{patient.birth_date || "No registrada"}</td>
-                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted">{patient.curp || "No registrada"}</td>
+                    <td data-label="Paciente" className="whitespace-nowrap px-4 py-3 font-semibold text-ink">{patient.first_name} {patient.last_name}</td>
+                    <td data-label="Correo" className="break-all px-4 py-3 text-muted">{patient.email}</td>
+                    <td data-label="Nacimiento" className="whitespace-nowrap px-4 py-3 text-muted">{patient.birth_date || "No registrada"}</td>
+                    <td data-label="CURP" className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted">{patient.curp || "No registrada"}</td>
                     <td className="px-4 py-3 text-right">
-                      <Button type="button" variant="secondary" icon={<Pencil className="h-4 w-4" />} onClick={() => openEditModal(patient)}>
-                        Editar
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        {canInvite ? <Button type="button" variant="secondary" icon={<Link2 className="h-4 w-4" />} onClick={async () => setInvitationLink(await onInvite(patient.id))}>Invitar</Button> : null}
+                        <Button type="button" variant="secondary" icon={<Pencil className="h-4 w-4" />} onClick={() => openEditModal(patient)}>Editar</Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -167,11 +171,19 @@ export function PatientPanel({ patients, onCreate, onRefresh, onUpdate }: Patien
               error={form.formState.errors.curp}
             />
           </div>
-          <div className="flex justify-end gap-2 md:col-span-2">
+          <div className="grid grid-cols-2 gap-2 md:col-span-2 sm:flex sm:justify-end">
             <Button type="button" variant="ghost" onClick={closeModal}>Cancelar</Button>
             <Button type="submit">{editingPatient ? "Guardar cambios" : "Guardar paciente"}</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={Boolean(invitationLink)} onClose={() => setInvitationLink("")} title="Invitación para el paciente" description="La cuenta es opcional. Comparte este enlace sólo con el paciente.">
+        <div className="grid gap-3">
+          <label className="grid gap-1.5"><span className="field-label">Enlace de acceso</span><input className="field-control" readOnly value={invitationLink} /></label>
+          <Button type="button" onClick={async () => navigator.clipboard.writeText(invitationLink)}>Copiar enlace</Button>
+          <p className="text-xs text-muted">El enlace vence en 7 días y sólo puede utilizarse una vez.</p>
+        </div>
       </Modal>
     </Card>
   );

@@ -4,7 +4,7 @@ import { ArrowLeft, FilePlus2, FolderOpen, PenLine, RefreshCw, Search, UserRound
 import { Button, Card, EmptyState, FormField, Modal } from "../../components/ui";
 import { formatDateTime } from "../../lib";
 import { useAppForm } from "../../hooks";
-import type { ClinicalNote, ClinicalNoteType, MedicalRecord, Patient } from "../../types";
+import type { ClinicalNote, ClinicalNoteType, DoctorAssignment, MedicalRecord, Patient, StaffMember } from "../../types";
 
 const noteTypes: Array<{ value: ClinicalNoteType; label: string }> = [
   { value: "initial_history", label: "Historia clinica" },
@@ -27,13 +27,16 @@ type MedicalRecordPanelProps = {
   onCreateRecord: () => Promise<void>;
   onCreateNote: (payload: Record<string, unknown>) => Promise<void>;
   onRefreshNotes: () => Promise<void>;
+  clinicalStaff: StaffMember[];
+  doctorAssignment: DoctorAssignment | null;
+  userId: string;
+  userRole: string;
+  onAssignDoctor: (doctorUserId: string) => Promise<void>;
 };
 
 type NoteForm = {
   note_type: ClinicalNoteType;
   content: string;
-  authored_by: string;
-  professional_license: string;
 };
 
 export function MedicalRecordPanel({
@@ -46,16 +49,20 @@ export function MedicalRecordPanel({
   onCreateRecord,
   onCreateNote,
   onRefreshNotes,
+  clinicalStaff,
+  doctorAssignment,
+  userId,
+  userRole,
+  onAssignDoctor,
 }: MedicalRecordPanelProps) {
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [patientSearch, setPatientSearch] = useState("");
+  const [doctorUserId, setDoctorUserId] = useState("");
   const form = useAppForm<NoteForm>({
     defaultValues: {
       note_type: "evolution_note",
       content: "Paciente estable, se documenta evolucion clinica y plan terapeutico.",
-      authored_by: "Dra. Maria Ruiz",
-      professional_license: "1234567",
     },
   });
 
@@ -71,6 +78,8 @@ export function MedicalRecordPanel({
   }, [patientSearch, patients]);
 
   const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? null;
+  const canAssignDoctor = userRole === "tenant_admin" || userRole === "reception";
+  const canSignNote = userRole === "doctor" && doctorAssignment?.doctor_user_id === userId;
 
   return (
     <Card>
@@ -79,7 +88,7 @@ export function MedicalRecordPanel({
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="section-title">Expedientes</h2>
-          <p className="text-sm text-muted">Selecciona un paciente para abrir o crear su expediente.</p>
+          <p className="text-sm text-muted">Elige el expediente que quieres consultar.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -113,9 +122,9 @@ export function MedicalRecordPanel({
       ) : filteredPatients.length === 0 ? (
         <EmptyState title="Sin resultados" description="No hay pacientes que coincidan con la busqueda." />
       ) : (
-        <div className="mb-5 overflow-hidden rounded-lg border border-slate-200">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+        <div className="mb-5 sm:overflow-hidden sm:rounded-lg sm:border sm:border-slate-200">
+          <div>
+            <table className="responsive-table min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Paciente</th>
@@ -129,9 +138,9 @@ export function MedicalRecordPanel({
                   const isSelected = patient.id === selectedPatientId;
                   return (
                     <tr key={patient.id} className={isSelected ? "bg-brand-50" : "hover:bg-slate-50"}>
-                      <td className="whitespace-nowrap px-4 py-3 font-semibold text-ink">{patient.first_name} {patient.last_name}</td>
-                      <td className="px-4 py-3 text-muted">{patient.email}</td>
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted">{patient.curp || "No registrada"}</td>
+                      <td data-label="Paciente" className="whitespace-nowrap px-4 py-3 font-semibold text-ink">{patient.first_name} {patient.last_name}</td>
+                      <td data-label="Correo" className="break-all px-4 py-3 text-muted">{patient.email}</td>
+                      <td data-label="CURP" className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted">{patient.curp || "No registrada"}</td>
                       <td className="px-4 py-3 text-right">
                         <Button
                           type="button"
@@ -142,7 +151,7 @@ export function MedicalRecordPanel({
                             await onOpenRecord(patient.id);
                           }}
                         >
-                          {isSelected ? "Expediente abierto" : "Abrir expediente"}
+                          {isSelected ? "Ver expediente" : "Seleccionar expediente"}
                         </Button>
                       </td>
                     </tr>
@@ -163,7 +172,7 @@ export function MedicalRecordPanel({
                 <UserRound className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Expediente del paciente</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Expediente seleccionado</p>
                 <h2 className="text-lg font-semibold text-ink">
                   {selectedPatient ? `${selectedPatient.first_name} ${selectedPatient.last_name}` : "Cargando paciente..."}
                 </h2>
@@ -179,18 +188,38 @@ export function MedicalRecordPanel({
                 setIsNoteModalOpen(false);
               }}
             >
-              Volver a expedientes
+              Elegir otro expediente
             </Button>
           </div>
 
       <div>
       {record ? (
-        <div className="mb-4 flex flex-col gap-3 rounded-md bg-slate-100 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 grid gap-3 rounded-xl bg-slate-100 p-4 text-sm sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
-            <span className="font-semibold text-ink">Expediente activo:</span>{" "}
-            <span className="break-all text-muted">{record.id}</span>
+            <p className="font-semibold text-ink">Médico responsable</p>
+            {canAssignDoctor ? (
+              <label className="mt-2 block max-w-md">
+                <span className="sr-only">Seleccionar médico responsable</span>
+                <select className="field-control" value={doctorUserId || doctorAssignment?.doctor_user_id || ""} onChange={(event) => setDoctorUserId(event.target.value)}>
+                  <option value="">Selecciona un médico</option>
+                  {clinicalStaff.map((doctor) => (
+                    <option key={doctor.user_id} value={doctor.user_id}>{doctor.full_name} · Cédula {doctor.professional_license}</option>
+                  ))}
+                </select>
+              </label>
+            ) : doctorAssignment ? (
+              <div className="mt-2 rounded-lg bg-white p-3">
+                <p className="font-semibold text-ink">{doctorAssignment.doctor_name}</p>
+                <p className="text-muted">Cédula {doctorAssignment.professional_license}{doctorAssignment.specialty ? ` · ${doctorAssignment.specialty}` : ""}</p>
+              </div>
+            ) : (
+              <p className="mt-1 text-muted">Administración debe asignar un médico antes de firmar notas.</p>
+            )}
           </div>
-          <Button type="button" variant="secondary" icon={<RefreshCw className="h-4 w-4" />} onClick={onRefreshNotes}>Actualizar notas</Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {canAssignDoctor ? <Button type="button" disabled={!(doctorUserId || doctorAssignment?.doctor_user_id)} onClick={() => onAssignDoctor(doctorUserId || doctorAssignment!.doctor_user_id)}>Guardar asignación</Button> : null}
+            <Button type="button" variant="secondary" icon={<RefreshCw className="h-4 w-4" />} onClick={onRefreshNotes}>Actualizar notas</Button>
+          </div>
         </div>
       ) : selectedPatientId ? (
         <div className="mb-4 flex flex-col gap-3 rounded-md border border-dashed border-slate-300 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -207,7 +236,7 @@ export function MedicalRecordPanel({
         />
       )}
 
-      {record && (
+      {record && canSignNote && (
         <div className="mt-4 flex justify-end">
           <Button
             type="button"
@@ -249,12 +278,7 @@ export function MedicalRecordPanel({
           onSubmit={form.submit(async (values) => {
             try {
               await onCreateNote(values);
-              form.reset({
-                note_type: values.note_type,
-                content: "",
-                authored_by: values.authored_by,
-                professional_license: values.professional_license,
-              });
+              form.reset({ note_type: values.note_type, content: "" });
               setIsNoteModalOpen(false);
             } catch (error) {
               form.applyServerError(error, "content");
@@ -271,16 +295,10 @@ export function MedicalRecordPanel({
               <option key={item.value} value={item.value}>{item.label}</option>
             ))}
           </FormField>
-          <FormField
-            label="Cedula profesional"
-            registration={form.register("professional_license", { required: "Cedula obligatoria para firma." })}
-            error={form.formState.errors.professional_license}
-          />
-          <FormField
-            label="Autor"
-            registration={form.register("authored_by", { required: "Autor obligatorio." })}
-            error={form.formState.errors.authored_by}
-          />
+          <div className="rounded-lg bg-brand-50 p-3 text-sm text-brand-700">
+            <p className="font-semibold">{doctorAssignment?.doctor_name}</p>
+            <p>Cédula {doctorAssignment?.professional_license}</p>
+          </div>
           <div className="md:col-span-2">
             <FormField
               label="Contenido clinico"
@@ -292,7 +310,7 @@ export function MedicalRecordPanel({
               error={form.formState.errors.content}
             />
           </div>
-          <div className="flex justify-end gap-2 md:col-span-2">
+          <div className="grid grid-cols-2 gap-2 md:col-span-2 sm:flex sm:justify-end">
             <Button type="button" variant="ghost" onClick={() => setIsNoteModalOpen(false)}>Cancelar</Button>
             <Button type="submit" icon={<PenLine className="h-4 w-4" />} disabled={!record}>Firmar nota</Button>
           </div>

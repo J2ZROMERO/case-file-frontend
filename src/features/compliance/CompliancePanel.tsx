@@ -13,6 +13,7 @@ type CompliancePanelProps = {
   onCreateConsent: (payload: Record<string, unknown>) => Promise<void>;
   onCreatePrescription: (payload: Record<string, unknown>) => Promise<void>;
   onRefresh: () => Promise<void>;
+  canPrescribe: boolean;
 };
 
 type ConsentForm = {
@@ -28,6 +29,11 @@ type PrescriptionForm = {
   indications: string;
   prescribed_by: string;
   professional_license: string;
+  medication_name: string;
+  dose: string;
+  schedule_times: string;
+  starts_on: string;
+  ends_on: string;
 };
 
 export function CompliancePanel({
@@ -37,6 +43,7 @@ export function CompliancePanel({
   onCreateConsent,
   onCreatePrescription,
   onRefresh,
+  canPrescribe,
 }: CompliancePanelProps) {
   const [activeModal, setActiveModal] = useState<"consent" | "prescription" | null>(null);
   const consentForm = useAppForm<ConsentForm>({
@@ -54,6 +61,11 @@ export function CompliancePanel({
       indications: "Indicaciones terapeuticas completas.",
       prescribed_by: "Dra. Maria Ruiz",
       professional_license: "1234567",
+      medication_name: "",
+      dose: "",
+      schedule_times: "",
+      starts_on: "",
+      ends_on: "",
     },
   });
 
@@ -88,16 +100,16 @@ export function CompliancePanel({
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="section-title">Consentimientos</h2>
-              <p className="text-sm text-muted">Documentos firmados y auditables.</p>
+              <p className="text-sm text-muted">Documentos firmados por el paciente.</p>
             </div>
-            <Button
+            {canPrescribe ? <Button
               type="button"
               icon={<Plus className="h-4 w-4" />}
               onClick={() => setActiveModal("consent")}
               disabled={!selectedPatientId}
             >
               Agregar
-            </Button>
+            </Button> : null}
           </div>
           <div className="grid gap-2">
           {consents.length === 0 ? (
@@ -117,7 +129,7 @@ export function CompliancePanel({
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="section-title">Recetas</h2>
-              <p className="text-sm text-muted">Prescripciones firmadas por el profesional.</p>
+              <p className="text-sm text-muted">Recetas firmadas por el médico.</p>
             </div>
             <Button
               type="button"
@@ -177,7 +189,7 @@ export function CompliancePanel({
           />
           <FormField label="Firma de" registration={consentForm.register("signed_by", { required: "Firma obligatoria." })} error={consentForm.formState.errors.signed_by} />
           <FormField label="Testigo" registration={consentForm.register("witness_name")} error={consentForm.formState.errors.witness_name} />
-          <div className="flex justify-end gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
             <Button type="button" variant="ghost" onClick={() => setActiveModal(null)}>Cancelar</Button>
             <Button type="submit" icon={<FileCheck2 className="h-4 w-4" />} disabled={!selectedPatientId}>Firmar consentimiento</Button>
           </div>
@@ -194,13 +206,27 @@ export function CompliancePanel({
           className="grid gap-3"
           onSubmit={prescriptionForm.submit(async (values) => {
             try {
-              await onCreatePrescription({ ...values, patient_id: selectedPatientId });
+              const { prescribed_by: _prescribedBy, professional_license: _professionalLicense, ...payload } = values;
+              await onCreatePrescription({
+                ...payload,
+                patient_id: selectedPatientId,
+                schedule_times: values.schedule_times.split(",").map((item) => item.trim()).filter(Boolean),
+                medication_name: values.medication_name || null,
+                dose: values.dose || null,
+                starts_on: values.starts_on || null,
+                ends_on: values.ends_on || null,
+              });
               prescriptionForm.reset({
                 diagnosis: "",
                 medication: "",
                 indications: "",
                 prescribed_by: values.prescribed_by,
                 professional_license: values.professional_license,
+                medication_name: "",
+                dose: "",
+                schedule_times: "",
+                starts_on: "",
+                ends_on: "",
               });
               setActiveModal(null);
             } catch (error) {
@@ -226,16 +252,15 @@ export function CompliancePanel({
             error={prescriptionForm.formState.errors.indications}
           />
           <FormField
-            label="Medico"
-            registration={prescriptionForm.register("prescribed_by", { required: "Medico obligatorio." })}
-            error={prescriptionForm.formState.errors.prescribed_by}
+            label="Nombre del medicamento para recordatorios"
+            registration={prescriptionForm.register("medication_name")}
+            error={prescriptionForm.formState.errors.medication_name}
           />
-          <FormField
-            label="Cedula"
-            registration={prescriptionForm.register("professional_license", { required: "Cedula obligatoria." })}
-            error={prescriptionForm.formState.errors.professional_license}
-          />
-          <div className="flex justify-end gap-2">
+          <FormField label="Dosis" registration={prescriptionForm.register("dose")} error={prescriptionForm.formState.errors.dose} />
+          <FormField label="Horarios (separados por coma)" placeholder="08:00, 20:00" registration={prescriptionForm.register("schedule_times")} error={prescriptionForm.formState.errors.schedule_times} />
+          <FormField label="Inicio" type="date" registration={prescriptionForm.register("starts_on")} error={prescriptionForm.formState.errors.starts_on} />
+          <FormField label="Fin" type="date" registration={prescriptionForm.register("ends_on")} error={prescriptionForm.formState.errors.ends_on} />
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
             <Button type="button" variant="ghost" onClick={() => setActiveModal(null)}>Cancelar</Button>
             <Button type="submit" icon={<Pill className="h-4 w-4" />} disabled={!selectedPatientId}>Firmar receta</Button>
           </div>
