@@ -1,3 +1,4 @@
+import type { ChangeReason } from "../components/ui/ActionReasonDialog";
 import type {
   AuditEvent,
   ClinicalNote,
@@ -13,9 +14,11 @@ import type {
   PortalMedication,
   PortalProfile,
   Tenant,
+  ManagedClinic,
 } from "../types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ??
+  (window.location.port === "5173" ? "http://127.0.0.1:8000" : window.location.origin);
 
 export type ApiResult<T> = {
   status: "success";
@@ -57,8 +60,10 @@ function successMessage(path: string, method: string): string {
 
 function fieldNameFromLocation(location: unknown): string | null {
   if (!Array.isArray(location)) return null;
-  const field = location[location.length - 1];
-  return typeof field === "string" ? field : null;
+  const parts = location
+    .filter((part) => part !== "body")
+    .filter((part): part is string | number => typeof part === "string" || typeof part === "number");
+  return parts.length ? parts.join(".") : null;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<ApiResult<T>> {
@@ -117,37 +122,59 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<A
 }
 
 export const api = {
+  getBootstrapStatus: () => request<{ setup_required: boolean }>("/auth/bootstrap/status"),
+  bootstrapAdmin: (body: {
+    clinic_name: string;
+    clinic_legal_name?: string | null;
+    full_name: string;
+    email: string;
+    password: string;
+    password_confirmation: string;
+  }) => request<{ tenant_id: string; user_id: string; clinic_name: string; full_name: string; email: string; role: string }>(
+    "/auth/bootstrap",
+    { method: "POST", body },
+  ),
   createTenant: (body: { name: string; legal_name?: string | null }) =>
     request<Tenant>("/tenants", { method: "POST", body }),
   createManagedTenant: (tenantId: string, token: string, body: { name: string; legal_name?: string | null }) =>
     request<Tenant>("/tenants/managed", { method: "POST", tenantId, token, body }),
+  listManagedClinics: (tenantId: string, token: string) =>
+    request<ManagedClinic[]>("/tenants/managed", { tenantId, token }),
+  associateStaffToClinic: (tenantId: string, token: string, targetTenantId: string, userId: string, change: ChangeReason) =>
+    request<{ membership_id: string; status: string }>(`/tenants/${targetTenantId}/staff-associations`, { method: "POST", tenantId, token, body: { user_id: userId, ...change } }),
+  referPatientToClinic: (tenantId: string, token: string, targetTenantId: string, body: { patient_id: string; consent_confirmed: boolean; reason?: string | null }) =>
+    request<{ referral_id: string; target_patient_id: string; status: string }>(`/tenants/${targetTenantId}/patient-referrals`, { method: "POST", tenantId, token, body }),
   registerUser: (body: Record<string, unknown>) =>
     request<{ id: string; tenant_id: string; email: string; full_name: string; role: string }>(
       "/auth/register",
       { method: "POST", body },
     ),
   login: (body: { tenant_id: string; email: string; password: string }) =>
-    request<{ access_token: string; token_type: string; user_id: string; full_name: string; role: string; tenant_id: string; tenant_name: string }>("/auth/login", { method: "POST", body }),
+    request<{ access_token: string; token_type: string; user_id: string; full_name: string; role: string; tenant_id: string; tenant_name: string; permissions: string[] }>("/auth/login", { method: "POST", body }),
+  myClinics: (token: string) =>
+    request<{ selection_token: string; user_id: string; full_name: string; email: string; clinics: Array<{ id: string; name: string; role: string }> }>("/auth/clinics", { token }),
   identifyUser: (body: { email: string; password: string }) =>
     request<{ selection_token: string; user_id: string; full_name: string; email: string; clinics: Array<{ id: string; name: string; role: string }> }>("/auth/identify", { method: "POST", body }),
   selectTenant: (selectionToken: string, tenantId: string) =>
-    request<{ access_token: string; token_type: string; user_id: string; full_name: string; role: string; tenant_id: string; tenant_name: string }>("/auth/select-tenant", { method: "POST", body: { selection_token: selectionToken, tenant_id: tenantId } }),
+    request<{ access_token: string; token_type: string; user_id: string; full_name: string; role: string; tenant_id: string; tenant_name: string; permissions: string[] }>("/auth/select-tenant", { method: "POST", body: { selection_token: selectionToken, tenant_id: tenantId } }),
   listStaff: (tenantId: string, token: string) => request<StaffMember[]>("/staff", { tenantId, token }),
   listClinicalStaff: (tenantId: string, token: string) => request<StaffMember[]>("/staff/clinical", { tenantId, token }),
   createStaff: (tenantId: string, token: string, body: Record<string, unknown>) =>
     request<StaffMember>("/staff", { method: "POST", tenantId, token, body }),
-  updateStaffStatus: (tenantId: string, token: string, membershipId: string, isActive: boolean) =>
-    request<StaffMember>(`/staff/${membershipId}/status`, { method: "PATCH", tenantId, token, body: { is_active: isActive } }),
+  updateStaffStatus: (tenantId: string, token: string, membershipId: string, isActive: boolean, change: ChangeReason) =>
+    request<StaffMember>(`/staff/${membershipId}/status`, { method: "PATCH", tenantId, token, body: { is_active: isActive, ...change } }),
   listAppointments: (tenantId: string, token: string) =>
     request<Appointment[]>("/appointments", { tenantId, token }),
   createAppointment: (tenantId: string, token: string, body: Record<string, unknown>) =>
     request<Appointment>("/appointments", { method: "POST", tenantId, token, body }),
-  updateAppointmentStatus: (tenantId: string, token: string, appointmentId: string, status: string) =>
-    request<Appointment>(`/appointments/${appointmentId}/status`, { method: "PATCH", tenantId, token, body: { status } }),
+  rescheduleAppointment: (tenantId: string, token: string, appointmentId: string, body: { starts_at: string; ends_at: string } & ChangeReason) =>
+    request<Appointment>(`/appointments/${appointmentId}/schedule`, { method: "PATCH", tenantId, token, body }),
+  updateAppointmentStatus: (tenantId: string, token: string, appointmentId: string, status: string, change: Partial<ChangeReason> = {}) =>
+    request<Appointment>(`/appointments/${appointmentId}/status`, { method: "PATCH", tenantId, token, body: { status, ...change } }),
   getDoctorAvailability: (tenantId: string, token: string, doctorUserId: string) =>
     request<DoctorAvailability[]>(`/appointments/availability/${doctorUserId}`, { tenantId, token }),
-  setDoctorAvailability: (tenantId: string, token: string, doctorUserId: string, days: DoctorAvailability[]) =>
-    request<DoctorAvailability[]>("/appointments/availability", { method: "POST", tenantId, token, body: { doctor_user_id: doctorUserId, days } }),
+  setDoctorAvailability: (tenantId: string, token: string, doctorUserId: string, days: DoctorAvailability[], change: ChangeReason) =>
+    request<DoctorAvailability[]>("/appointments/availability", { method: "POST", tenantId, token, body: { doctor_user_id: doctorUserId, days, ...change } }),
   createPatientInvitation: (tenantId: string, token: string, patientId: string) =>
     request<{ token: string; tenant_id: string; patient_id: string; patient_email: string; expires_at: string }>(`/portal/invitations/${patientId}`, { method: "POST", tenantId, token }),
   acceptPatientInvitation: (token: string, password: string) =>
@@ -182,12 +209,12 @@ export const api = {
     request<ClinicalNote[]>(`/medical-records/${recordId}/notes`, { tenantId, token }),
   getDoctorAssignment: (tenantId: string, token: string, recordId: string) =>
     request<DoctorAssignment | null>(`/medical-records/${recordId}/assignment`, { tenantId, token }),
-  assignDoctor: (tenantId: string, token: string, recordId: string, doctorUserId: string) =>
+  assignDoctor: (tenantId: string, token: string, recordId: string, doctorUserId: string, change: Partial<ChangeReason> = {}) =>
     request<DoctorAssignment>(`/medical-records/${recordId}/assignment`, {
       method: "POST",
       tenantId,
       token,
-      body: { doctor_user_id: doctorUserId },
+      body: { doctor_user_id: doctorUserId, ...change },
     }),
   createConsent: (tenantId: string, token: string, body: Record<string, unknown>) =>
     request<Consent>("/consents", { method: "POST", tenantId, token, body }),

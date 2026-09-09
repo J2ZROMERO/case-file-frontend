@@ -16,6 +16,7 @@ type AuthPanelProps = {
   onIdentify: (payload: { email: string; password: string }) => Promise<void>;
   onSelectClinic: (clinic: ClinicAccess) => Promise<void>;
   onBack: () => void;
+  backLabel?: string;
 };
 
 type LoginForm = { email: string; password: string };
@@ -28,7 +29,7 @@ const roleLabels: Record<string, string> = {
   auditor: "Consulta de actividad",
 };
 
-export function AuthPanel({ selection, onIdentify, onSelectClinic, onBack }: AuthPanelProps) {
+export function AuthPanel({ selection, onIdentify, onSelectClinic, onBack, backLabel = "Usar otra cuenta" }: AuthPanelProps) {
   const form = useAppForm<LoginForm>({ defaultValues: { email: "", password: "" } });
 
   return (
@@ -97,7 +98,7 @@ export function AuthPanel({ selection, onIdentify, onSelectClinic, onBack }: Aut
             ))}
           </div>
           <Button className="mt-4" type="button" variant="secondary" onClick={onBack}>
-            Usar otra cuenta
+            {backLabel}
           </Button>
         </>
       )}

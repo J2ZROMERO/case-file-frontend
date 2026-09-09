@@ -52,7 +52,7 @@ export function PatientPanel({ tenantId, onCreate }: PatientPanelProps) {
         >
           <FormField label="Nombre" registration={form.register("first_name", { required: "Nombre obligatorio." })} error={form.formState.errors.first_name} />
           <FormField label="Apellidos" registration={form.register("last_name", { required: "Apellidos obligatorios." })} error={form.formState.errors.last_name} />
-          <FormField label="Email" type="email" registration={form.register("email", { required: "Email obligatorio." })} error={form.formState.errors.email} />
+          <FormField label="Correo electrónico (opcional)" type="email" registration={form.register("email")} error={form.formState.errors.email} />
           <FormField label="Fecha de nacimiento" type="date" registration={form.register("birth_date")} error={form.formState.errors.birth_date} />
           <div className="md:col-span-2">
             <FormField

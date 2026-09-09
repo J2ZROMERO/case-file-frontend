@@ -122,9 +122,9 @@ export function PatientPanel({
               error={form.formState.errors.last_name}
             />
             <FormField
-              label="Email"
+              label="Correo electrónico (opcional)"
               type="email"
-              registration={form.register("email", { required: "Email obligatorio." })}
+              registration={form.register("email")}
               error={form.formState.errors.email}
             />
             <FormField
@@ -163,7 +163,7 @@ export function PatientPanel({
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por nombre, email o CURP"
+            placeholder="Buscar por nombre, correo o CURP"
             className="field-control pl-9"
           />
         </label>
@@ -183,7 +183,7 @@ export function PatientPanel({
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th scope="col" className="px-4 py-3 font-semibold">Paciente</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Email</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">Correo electrónico</th>
                   <th scope="col" className="px-4 py-3 font-semibold">Fecha de nacimiento</th>
                   <th scope="col" className="px-4 py-3 font-semibold">CURP</th>
                   <th scope="col" className="px-4 py-3 text-right font-semibold">Accion</th>
@@ -197,7 +197,7 @@ export function PatientPanel({
                       <td className="whitespace-nowrap px-4 py-3 font-semibold text-ink">
                         {patient.first_name} {patient.last_name}
                       </td>
-                      <td className="px-4 py-3 text-muted">{patient.email}</td>
+                      <td className="px-4 py-3 text-muted">{patient.email || "Sin correo"}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted">
                         {patient.birth_date || "No registrada"}
                       </td>

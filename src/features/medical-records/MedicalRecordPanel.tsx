@@ -55,6 +55,7 @@ export function MedicalRecordPanel({
   userRole,
   onAssignDoctor,
 }: MedicalRecordPanelProps) {
+  const [assignmentError, setAssignmentError] = useState("");
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [patientSearch, setPatientSearch] = useState("");
@@ -110,7 +111,7 @@ export function MedicalRecordPanel({
             type="search"
             value={patientSearch}
             onChange={(event) => setPatientSearch(event.target.value)}
-            placeholder="Buscar por nombre, email o CURP"
+            placeholder="Buscar por nombre, correo o CURP"
             className="field-control pl-9"
           />
         </label>
@@ -128,7 +129,7 @@ export function MedicalRecordPanel({
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Paciente</th>
-                  <th className="px-4 py-3 font-semibold">Email</th>
+                  <th className="px-4 py-3 font-semibold">Correo electrónico</th>
                   <th className="px-4 py-3 font-semibold">CURP</th>
                   <th className="px-4 py-3 text-right font-semibold">Expediente</th>
                 </tr>
@@ -139,7 +140,7 @@ export function MedicalRecordPanel({
                   return (
                     <tr key={patient.id} className={isSelected ? "bg-brand-50" : "hover:bg-slate-50"}>
                       <td data-label="Paciente" className="whitespace-nowrap px-4 py-3 font-semibold text-ink">{patient.first_name} {patient.last_name}</td>
-                      <td data-label="Correo" className="break-all px-4 py-3 text-muted">{patient.email}</td>
+                      <td data-label="Correo" className="break-all px-4 py-3 text-muted">{patient.email || "Sin correo"}</td>
                       <td data-label="CURP" className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted">{patient.curp || "No registrada"}</td>
                       <td className="px-4 py-3 text-right">
                         <Button
@@ -216,8 +217,9 @@ export function MedicalRecordPanel({
               <p className="mt-1 text-muted">Administración debe asignar un médico antes de firmar notas.</p>
             )}
           </div>
+          {assignmentError ? <p role="alert" className="text-sm text-red-700">{assignmentError}</p> : null}
           <div className="flex flex-col gap-2 sm:flex-row">
-            {canAssignDoctor ? <Button type="button" disabled={!(doctorUserId || doctorAssignment?.doctor_user_id)} onClick={() => onAssignDoctor(doctorUserId || doctorAssignment!.doctor_user_id)}>Guardar asignación</Button> : null}
+            {canAssignDoctor ? <Button type="button" disabled={!(doctorUserId || doctorAssignment?.doctor_user_id)} onClick={async () => { setAssignmentError(""); try { await onAssignDoctor(doctorUserId || doctorAssignment!.doctor_user_id); } catch (error) { setAssignmentError(error instanceof Error ? error.message : "No se pudo cambiar la asignación."); } }}>Guardar asignación</Button> : null}
             <Button type="button" variant="secondary" icon={<RefreshCw className="h-4 w-4" />} onClick={onRefreshNotes}>Actualizar notas</Button>
           </div>
         </div>

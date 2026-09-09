@@ -25,6 +25,74 @@
   }
 }
 
+.prescription-sheet {
+  width: 100%;
+  min-height: 9.6in;
+  padding: clamp(1rem, 4vw, 0.55in);
+  border: 1px solid #cbd5e1;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.prescription-sheet__header,
+.prescription-sheet__patient,
+.prescription-sheet__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.prescription-sheet__header {
+  padding-bottom: 1rem;
+  border-bottom: 3px solid #0f766e;
+}
+
+.prescription-sheet__eyebrow,
+.prescription-sheet span {
+  color: #475569;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.prescription-sheet h1 { margin: 0.2rem 0; font-size: 22px; }
+.prescription-sheet p { margin: 0.15rem 0; white-space: pre-wrap; }
+.prescription-sheet__folio { display: grid; align-content: start; justify-items: end; text-align: right; }
+.prescription-sheet__patient { margin-top: 1rem; padding: 0.75rem; background: #f1f5f9; }
+.prescription-sheet__patient > div { display: grid; gap: 0.15rem; }
+.prescription-sheet__diagnosis { margin-top: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #cbd5e1; }
+.prescription-sheet__treatment { display: grid; grid-template-columns: 2.5rem 1fr; gap: 0.75rem; margin-top: 1.25rem; }
+.prescription-sheet__treatment + .prescription-sheet__treatment { padding-top: 1.25rem; border-top: 1px dashed #94a3b8; }
+.prescription-sheet__rx { color: #0f766e; font-family: Georgia, serif; font-size: 24px; font-weight: 700; }
+.prescription-sheet__treatment h2 { margin: 0; font-size: 18px; }
+.prescription-sheet dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1rem; margin: 1rem 0; }
+.prescription-sheet dl div { padding-bottom: 0.35rem; border-bottom: 1px solid #e2e8f0; }
+.prescription-sheet dt { color: #475569; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.prescription-sheet dd { margin: 0.15rem 0 0; font-weight: 600; }
+.prescription-sheet__instructions { margin-top: 1rem; padding: 0.75rem; border: 1px solid #cbd5e1; }
+.prescription-sheet__footer { align-items: end; margin-top: 1in; }
+.prescription-sheet__notice { max-width: 48%; color: #64748b; font-size: 9px; }
+.prescription-sheet__signature { display: grid; min-width: 16rem; justify-items: center; text-align: center; }
+.prescription-sheet__signature-line { width: 100%; margin-bottom: 0.4rem; border-top: 1px solid #0f172a; }
+
+@media (max-width: 639px) {
+  .prescription-sheet { min-height: auto; padding: 1rem; }
+  .prescription-sheet__header, .prescription-sheet__patient, .prescription-sheet__footer { flex-direction: column; }
+  .prescription-sheet__folio { justify-items: start; text-align: left; }
+  .prescription-sheet dl { grid-template-columns: 1fr; }
+  .prescription-sheet__footer { align-items: stretch; margin-top: 3rem; }
+  .prescription-sheet__notice { max-width: none; }
+}
+
+@media print {
+  @page { size: Letter; margin: 0; }
+  body * { visibility: hidden !important; }
+  .prescription-print-root, .prescription-print-root * { visibility: visible !important; }
+  .prescription-print-root { position: absolute; inset: 0; width: 8.5in; min-height: 11in; margin: 0; background: white; }
+  .prescription-sheet { width: 8.5in; min-height: 11in; padding: 0.55in; border: 0; }
+}
+
 @layer components {
   .page-shell {
     @apply mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 pb-24 pt-4 sm:gap-5 sm:px-6 lg:px-8 lg:pb-8;
@@ -47,7 +115,8 @@
   }
 
   .clinical-calendar .fc {
-    @apply text-sm text-ink;
+    @apply min-w-0 text-sm text-ink;
+    max-width: 100%;
   }
 
   .clinical-calendar .fc-toolbar {
@@ -83,6 +152,17 @@
 
     .clinical-calendar .fc-toolbar-chunk:nth-child(2) {
       @apply row-start-1;
+    }
+
+    .clinical-calendar .fc-timegrid-axis,
+    .clinical-calendar .fc-timegrid-slot-label {
+      width: 3.25rem;
+      font-size: 0.7rem;
+    }
+
+    .clinical-calendar .fc-button {
+      min-height: 2.5rem;
+      padding-inline: 0.65rem;
     }
   }
 
@@ -124,5 +204,32 @@
     .responsive-table td:last-child::before {
       content: none;
     }
+  }
+}
+
+/* Consistent personnel actions across table rows and mobile cards. */
+@layer components {
+  .staff-actions {
+    @apply ml-auto grid w-full max-w-[14rem] gap-2;
+  }
+
+  .staff-action {
+    @apply flex min-h-11 w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2;
+  }
+
+  .staff-action-assign {
+    @apply border-slate-200 bg-white text-ink hover:border-brand-500 hover:bg-brand-50;
+  }
+
+  .staff-action-remove {
+    @apply border-red-100 bg-white text-red-700 hover:border-red-200 hover:bg-red-50;
+  }
+
+  .staff-action-restore {
+    @apply border-brand-100 bg-brand-50 text-brand-700 hover:bg-brand-100;
+  }
+
+  .staff-action-current {
+    @apply cursor-default border-slate-200 bg-slate-50 text-slate-500;
   }
 }

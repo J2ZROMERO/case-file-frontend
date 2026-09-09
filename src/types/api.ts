@@ -5,12 +5,17 @@ export type Tenant = {
   is_active: boolean;
 };
 
+export type ManagedClinic = Tenant & {
+  staff_count: number;
+  patient_count: number;
+};
+
 export type Patient = {
   id: string;
   tenant_id: string;
   first_name: string;
   last_name: string;
-  email: string;
+  email: string | null;
   birth_date: string | null;
   curp: string | null;
 };
@@ -43,7 +48,23 @@ export type ClinicalNote = {
   signed_at: string;
 };
 
+export type AuditDetails = {
+  actor_name?: string | null;
+  actor_role?: string | null;
+  clinic_name?: string | null;
+  subject_name?: string | null;
+  subject_id?: string;
+  doctor_name?: string | null;
+  source_clinic?: string;
+  target_clinic?: string;
+  reason?: string | null;
+  comment?: string | null;
+  remaining_clinics?: string[];
+  changes?: Array<{ field: string; before: unknown; after: unknown }>;
+};
+
 export type AuditEvent = {
+  details: AuditDetails | null;
   id: string;
   tenant_id: string;
   actor_id: string;
@@ -62,6 +83,7 @@ export type AuthSession = {
   fullName: string;
   email: string;
   role: string;
+  permissions: string[];
 };
 
 export type StaffMember = {
@@ -126,6 +148,7 @@ export type PortalAppointment = {
 };
 
 export type PortalMedication = {
+  medication_id: string;
   prescription_id: string;
   medication: string;
   indications: string;
@@ -159,6 +182,47 @@ export type Prescription = {
   prescribed_by: string;
   professional_license: string;
   signed_at: string;
+  document: {
+    folio: string;
+    clinic_name: string;
+    clinic_address: string | null;
+    clinic_phone: string | null;
+    patient_name: string;
+    patient_birth_date: string | null;
+    diagnosis: string;
+    source_type?: "text" | "image";
+    prescription_text?: string | null;
+    image_name?: string | null;
+    image_data_url?: string | null;
+    medications?: Array<{
+      medication_name: string;
+      concentration: string | null;
+      pharmaceutical_form: string | null;
+      quantity: string | null;
+      dose: string | null;
+      administration_route: string | null;
+      frequency: string | null;
+      treatment_duration: string | null;
+      indications: string;
+      schedule_times?: string[];
+      starts_on?: string | null;
+      ends_on?: string | null;
+    }>;
+    medication_name: string | null;
+    concentration: string | null;
+    pharmaceutical_form: string | null;
+    quantity: string | null;
+    dose: string | null;
+    administration_route: string | null;
+    frequency: string | null;
+    treatment_duration: string | null;
+    indications: string;
+    prescriber_name: string;
+    professional_license: string;
+    specialty: string | null;
+    specialty_license: string | null;
+    issued_at: string;
+  } | null;
 };
 
 export type ApiError = {

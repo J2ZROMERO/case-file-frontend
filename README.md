@@ -167,3 +167,9 @@ git init
 git add .
 git commit -m "Initial frontend"
 ```
+
+## Documentación técnica
+
+- `docs/ARCHITECTURE.md`: capas, estado, dependencias y sustitución de framework/kit.
+- `docs/DESIGN_SYSTEM.md`: estilos, tipografía, tokens, componentes, accesibilidad, tamaño de letra y dark mode.
+- `docs/SECURITY_AND_EXPORTS.md`: sesión, confianza, impresión, iCalendar y patrón de exportación segura.

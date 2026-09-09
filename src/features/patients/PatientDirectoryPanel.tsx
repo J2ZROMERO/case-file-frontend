@@ -8,6 +8,7 @@ import type { Patient } from "../../types";
 type PatientDirectoryPanelProps = {
   patients: Patient[];
   onCreate: (payload: Record<string, unknown>) => Promise<void>;
+  canCreate: boolean;
   onRefresh: () => Promise<void>;
   onUpdate: (patientId: string, payload: Record<string, unknown>) => Promise<void>;
   canInvite: boolean;
@@ -22,7 +23,7 @@ type PatientForm = {
   curp: string;
 };
 
-export function PatientPanel({ patients, onCreate, onRefresh, onUpdate, canInvite, onInvite }: PatientDirectoryPanelProps) {
+export function PatientPanel({ patients, onCreate, canCreate, onRefresh, onUpdate, canInvite, onInvite }: PatientDirectoryPanelProps) {
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -46,7 +47,7 @@ export function PatientPanel({ patients, onCreate, onRefresh, onUpdate, canInvit
     form.reset({
       first_name: patient.first_name,
       last_name: patient.last_name,
-      email: patient.email,
+      email: patient.email ?? "",
       birth_date: patient.birth_date ?? "",
       curp: patient.curp ?? "",
     });
@@ -75,9 +76,11 @@ export function PatientPanel({ patients, onCreate, onRefresh, onUpdate, canInvit
           <Button type="button" variant="secondary" icon={<RefreshCw className="h-4 w-4" />} onClick={onRefresh}>
             Actualizar
           </Button>
-          <Button type="button" icon={<Plus className="h-4 w-4" />} onClick={openCreateModal}>
-            Agregar paciente
-          </Button>
+          {canCreate ? (
+            <Button type="button" icon={<Plus className="h-4 w-4" />} onClick={openCreateModal}>
+              Agregar paciente
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -89,7 +92,7 @@ export function PatientPanel({ patients, onCreate, onRefresh, onUpdate, canInvit
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por nombre, email o CURP"
+            placeholder="Buscar por nombre, correo o CURP"
             className="field-control pl-9"
           />
         </label>
@@ -97,7 +100,7 @@ export function PatientPanel({ patients, onCreate, onRefresh, onUpdate, canInvit
       </div>
 
       {patients.length === 0 ? (
-        <EmptyState title="Sin pacientes" description="Todavia no hay pacientes registrados en esta clinica." />
+        <EmptyState title="Sin pacientes" description={canCreate ? "Todavia no hay pacientes registrados en esta clinica." : "Todavía no tienes pacientes disponibles."} />
       ) : filteredPatients.length === 0 ? (
         <EmptyState title="Sin resultados" description="No hay pacientes que coincidan con la busqueda." />
       ) : (
@@ -107,7 +110,7 @@ export function PatientPanel({ patients, onCreate, onRefresh, onUpdate, canInvit
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Paciente</th>
-                  <th className="px-4 py-3 font-semibold">Email</th>
+                  <th className="px-4 py-3 font-semibold">Correo electrónico</th>
                   <th className="px-4 py-3 font-semibold">Fecha de nacimiento</th>
                   <th className="px-4 py-3 font-semibold">CURP</th>
                   <th className="px-4 py-3 text-right font-semibold">Acciones</th>
@@ -117,7 +120,7 @@ export function PatientPanel({ patients, onCreate, onRefresh, onUpdate, canInvit
                 {filteredPatients.map((patient) => (
                   <tr key={patient.id} className="hover:bg-slate-50">
                     <td data-label="Paciente" className="whitespace-nowrap px-4 py-3 font-semibold text-ink">{patient.first_name} {patient.last_name}</td>
-                    <td data-label="Correo" className="break-all px-4 py-3 text-muted">{patient.email}</td>
+                    <td data-label="Correo" className="break-all px-4 py-3 text-muted">{patient.email || "Sin correo"}</td>
                     <td data-label="Nacimiento" className="whitespace-nowrap px-4 py-3 text-muted">{patient.birth_date || "No registrada"}</td>
                     <td data-label="CURP" className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted">{patient.curp || "No registrada"}</td>
                     <td className="px-4 py-3 text-right">
@@ -159,7 +162,7 @@ export function PatientPanel({ patients, onCreate, onRefresh, onUpdate, canInvit
         >
           <FormField label="Nombre" registration={form.register("first_name", { required: "Nombre obligatorio." })} error={form.formState.errors.first_name} />
           <FormField label="Apellidos" registration={form.register("last_name", { required: "Apellidos obligatorios." })} error={form.formState.errors.last_name} />
-          <FormField label="Email" type="email" registration={form.register("email", { required: "Email obligatorio." })} error={form.formState.errors.email} />
+          <FormField label="Correo electrónico (opcional)" type="email" registration={form.register("email")} error={form.formState.errors.email} />
           <FormField label="Fecha de nacimiento" type="date" registration={form.register("birth_date")} error={form.formState.errors.birth_date} />
           <div className="md:col-span-2">
             <FormField
